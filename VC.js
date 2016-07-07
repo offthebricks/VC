@@ -1,9 +1,12 @@
 /*
 Copyright 2016 OffTheBricks - https://github.com/mircerlancerous/jsLight
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
  http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,6 +17,12 @@ var VC = (function(){
 	//private properties and methods
 	var self = (function(){
 		return {
+			//the full url to the views folder to use when relative paths are not reliable
+			viewsURL: "views/",
+			
+			//default http headers to send with every xml http request - format is [{name: xx, value: yy}]
+			xhrHeaders: [{name: "Asynchronous", value: "jsLight"}],
+			
 			//current views and their controllers and parent elements
 			ViewObject: function(){
 				this.view = "";
@@ -33,6 +42,16 @@ var VC = (function(){
 			
 			//set the supplied html to the element in the supplied viewObj. Initialize the view's controller if applicable
 			setView: function(viewObj,html){
+				//check the html for a redirect command
+				try{
+					var obj = JSON.parse(html);
+					//only redirect if obj has only one property named 'view'
+					if(Object.getOwnPropertyNames(obj).length == 1 && typeof(obj.view) === 'string'){
+						VC.getView(viewObj.elm,obj.view);
+						return;
+					}
+				}
+				catch(e){}
 				//get the old view in order to remove it
 				var oldViewObj = VC.getViewObject(viewObj.elm);
 				if(oldViewObj.elm){
@@ -68,23 +87,6 @@ var VC = (function(){
 				//check if we need to manually call onviewload
 				if(noOnLoad){
 					VC.onviewload(viewObj);
-				}
-			},
-			
-			//removes all view change listeners for the supplied view. If viewName is undefined, then all listeners are removed
-			clearViewListeners: function(viewName){
-				var arrVC = self.arrViewChangeObj;
-				if(typeof(viewName) === 'undefined'){
-					viewName = null;
-				}
-				if(typeof(trigger) === 'undefined'){
-					trigger = true;
-				}
-				//search for and remove all listeners with the same viewName
-				for(var i=arrVC.length - 1; i>=0; i--){
-					if(viewName === null || arrVC[i].viewName == viewName){
-						arrVC.splice(i,1);
-					}
 				}
 			},
 			
@@ -143,37 +145,31 @@ var VC = (function(){
 			xmlhttp.onreadystatechange = function(){
 				if(this.readyState == 4){
 					if(typeof(onload) === 'function'){
-						if(this.status == 200 || this.status === 0){
-							onload(this.responseText,true);
-						}
-						else{
-							onload(this.responseText,false);
-						}
+						onload(this.responseText,this.status);
 					}
 				}
 			};
 			if(typeof(formData) === 'undefined' || !formData){
 				xmlhttp.open("GET",url,true);
-				if(typeof(headers) !== 'undefined'){
-					for(var i=0; i<headers.length; i++){
-						xmlhttp.setRequestHeader(headers[i].name,headers[i].value);
-					}
-				}
-				xmlhttp.send();
 			}
 			else{
 				xmlhttp.open("POST",url,true);
-				if(typeof(headers) !== 'undefined'){
-					for(var i=0; i<headers.length; i++){
-						xmlhttp.setRequestHeader(headers[i].name,headers[i].value);
-					}
-				}
-				xmlhttp.send(formData);
 			}
+			//check for custom headers
+			if(typeof(headers) !== 'undefined'){
+				for(var i=0; i<headers.length; i++){
+					xmlhttp.setRequestHeader(headers[i].name,headers[i].value);
+				}
+			}
+			//check for default headers
+			for(var i=0; i<self.xhrHeaders.length; i++){
+				xmlhttp.setRequestHeader(self.xhrHeaders[i].name,self.xhrHeaders[i].value);
+			}
+			xmlhttp.send(formData);
 		},
 		
 		//gets the supplied view and puts it into the supplied element. The view should be the path of the view inside the views folder
-		getView: function(elm,view,formData){
+		getView: function(elm,view,formData,headers){
 			elm.style.opacity = "0.5";
 			var viewObj = VC.getViewObject(elm);
 			if(viewObj.elm === null){
@@ -192,14 +188,18 @@ var VC = (function(){
 				viewObj.viewName = viewObj.viewName.substring(pos+1);
 			}
 			viewObj.elm = elm;
-			VC.doXHR("views/"+view,function(html,success){
+			var url = self.viewsURL+view;
+			if(view.search("http") > -1){
+				url = view;
+			}
+			VC.doXHR(url,function(html,success){
 				if(!success){
 					alert("error loading content");
 					elm.style.opacity = "1";
 					return;
 				}
 				self.setView(viewObj,html);
-			},formData);
+			},formData,headers);
 		},
 		
 		//get the view object for the view currently in the supplied element - if not found, return null
@@ -222,7 +222,7 @@ var VC = (function(){
 			//if there is a current view with a controller
 			if(viewObj.controller){
 				//clean out all event listeners that this view might have
-				self.clearViewListeners(viewObj.viewName);
+				VC.clearViewChangeListeners(viewObj.viewName);
 				//if the view controller has an onclose method
 				if(typeof(viewObj.controller.onclose) === 'function'){
 					viewObj.controller.onclose(viewObj);
@@ -265,6 +265,33 @@ var VC = (function(){
 			vcArr[i].elm = elm;
 			vcArr[i].viewName = viewName;
 			vcArr[i].onchange = onchange;
+		},
+
+		//removes all view change listeners for the supplied view. If viewName is undefined, then all listeners are removed
+		clearViewChangeListeners: function(viewName){
+			var arrVC = self.arrViewChangeObj;
+			if(typeof(viewName) === 'undefined'){
+				viewName = null;
+			}
+			if(typeof(trigger) === 'undefined'){
+				trigger = true;
+			}
+			//search for and remove all listeners with the same viewName
+			for(var i=arrVC.length - 1; i>=0; i--){
+				if(viewName === null || arrVC[i].viewName == viewName){
+					arrVC.splice(i,1);
+				}
+			}
+		},
+		
+		//set the views url so that relative urls can be used in links and forms where they might not otherwise have been reliable
+		setViewsURL: function(url){
+			//ensure the last character is a /
+			var last = url.substring(url.length-1);
+			if(last != '/'){
+				url += "/";
+			}
+			self.viewsURL = url;
 		},
 		
 		//detect all forms and anchors in the element in the supplied viewObj, and alter their behavior to use the view system
