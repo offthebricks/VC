@@ -140,7 +140,7 @@ var VC = (function(){
 	//public properties and methods
 	return {
 		//quick and easy xhr calls to the server with GET and or POST parameters
-		doXHR: function(url,onload,formData,headers){
+		doXHR: function(url,onload,formData,method,headers){
 			var xmlhttp = new XMLHttpRequest();
 			xmlhttp.onreadystatechange = function(){
 				if(this.readyState == 4){
@@ -149,12 +149,16 @@ var VC = (function(){
 					}
 				}
 			};
-			if(typeof(formData) === 'undefined' || !formData){
-				xmlhttp.open("GET",url,true);
+			//set http method
+			if(typeof(method) === 'undefined' || !method){
+				if(typeof(formData) === 'undefined' || !formData){
+					method = "GET";
+				}
+				else{
+					method = "POST";
+				}
 			}
-			else{
-				xmlhttp.open("POST",url,true);
-			}
+			xmlhttp.open(method,url,true);
 			//check for custom headers
 			if(typeof(headers) !== 'undefined'){
 				for(var i=0; i<headers.length; i++){
