@@ -305,12 +305,18 @@ var VC = (function(){
 
 		//called by a controller (usually from the controller's onstart) when the controller has finished loading
 		onviewload: function(viewObj){
+			var retArr = [];
 			var vcArr = self.arrViewChangeObj;
 			for(var i=0; i<vcArr.length; i++){
 				if(viewObj.elm == vcArr[i].elm){
-					vcArr[i].onchange(viewObj);
+					var ret = vcArr[i].onchange(viewObj);
+					//check if the onchange wants to return something to the view
+					if(typeof(ret) !== 'undefined'){
+						retArr[retArr.length] = ret;
+					}
 				}
 			}
+			return retArr;
 		}
 	}
 })();
