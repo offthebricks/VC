@@ -21,7 +21,7 @@ var VC = (function(){
 			viewsURL: "views/",
 			
 			//default http headers to send with every xml http request - format is [{name: xx, value: yy}]
-			xhrHeaders: [{name: "Asynchronous", value: "jsLight"}],
+			xhrHeaders: [],
 			
 			//current views and their controllers and parent elements
 			ViewObject: function(){
@@ -45,9 +45,13 @@ var VC = (function(){
 				//check the html for a redirect command
 				try{
 					var obj = JSON.parse(html);
-					//only redirect if obj has only one property named 'view'
-					if(Object.getOwnPropertyNames(obj).length == 1 && typeof(obj.view) === 'string'){
-						VC.getView(viewObj.elm,obj.view);
+					//only redirect if obj has only one property named 'view' with an optional elmid property
+					if(Object.getOwnPropertyNames(obj).length <= 2 && typeof(obj.view) === 'string'){
+						var elm = viewObj.elm;
+						if(typeof(obj.elmid) === 'string'){
+							elm = document.getElementById(obj.elmid);
+						}
+						VC.getView(elm,obj.view);
 						return;
 					}
 				}
@@ -59,8 +63,10 @@ var VC = (function(){
 				}
 				//add the new view to the list
 				self.arrViewObj[self.arrViewObj.length] = viewObj;
-				viewObj.elm.innerHTML = html;
-				viewObj.elm.style.opacity = "1";
+				if(typeof(html) === 'string'){
+					viewObj.elm.innerHTML = html;
+				}
+				viewObj.elm.style.opacity = "";
 				self.setViewNavEvents(viewObj);
 				var noOnLoad = true;
 				//initialize controller if applicable
@@ -128,6 +134,9 @@ var VC = (function(){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
 							var view = this.href.substring(window.location.href.lastIndexOf("/") + 1);
+							if(typeof(this.dataset.link) !== 'undefined'){
+								view = this.dataset.link;
+							}
 							VC.getView(viewObj.elm,view);
 							return false;
 						},false);
@@ -136,6 +145,8 @@ var VC = (function(){
 			}
 		};
 	})();
+
+/*********************************************************************************/
 	
 	//public properties and methods
 	return {
@@ -165,33 +176,61 @@ var VC = (function(){
 					xmlhttp.setRequestHeader(headers[i].name,headers[i].value);
 				}
 			}
+            else{
+                headers = [];
+            }
 			//check for default headers
 			for(var i=0; i<self.xhrHeaders.length; i++){
+                //skip if found in passed headers
+                var found = false;
+                for(var v=0; v<headers.length; v++){
+                    if(headers[v].name == self.xhrHeaders[i].name){
+                        found = true;
+                        break;
+                    }
+                }
+                if(found){
+                    continue;
+                }
+                //set default header
 				xmlhttp.setRequestHeader(self.xhrHeaders[i].name,self.xhrHeaders[i].value);
 			}
 			xmlhttp.send(formData);
 		},
 		
 		//gets the supplied view and puts it into the supplied element. The view should be the path of the view inside the views folder
-		getView: function(elm,view,formData,headers){
+		getView: function(elm,view,formData,headers,alreadyLoaded){
 			elm.style.opacity = "0.5";
-			var viewObj = VC.getViewObject(elm);
-			if(viewObj.elm === null){
-				viewObj = new self.ViewObject();
-				viewObj.elm = elm;
-			}
+			var viewObj = new self.ViewObject();
+			viewObj.elm = elm;
 			viewObj.view = view;
 			viewObj.viewName = view;
 			//strip extension from the view to get controller object name/view name
 			var pos = viewObj.viewName.lastIndexOf(".");
-			if(pos > -1){
+			var poscheck = viewObj.viewName.lastIndexOf("/");
+			if(pos > -1 && pos > poscheck){
 				viewObj.viewName = viewObj.viewName.substring(0,pos);
 			}
-			pos = viewObj.viewName.lastIndexOf("/");
-			if(pos > -1){
-				viewObj.viewName = viewObj.viewName.substring(pos+1);
+			else{
+				pos = viewObj.viewName.lastIndexOf("?");
+				if(pos > -1){
+					viewObj.viewName = viewObj.viewName.substring(0,pos);
+				}
 			}
-			viewObj.elm = elm;
+			//look for an appropriate controller and set the viewName to it
+			pos = viewObj.viewName.split("/");
+			for(var i=0; i<pos.length; i++){
+				if(pos[i] && typeof(window[pos[i]]) === 'function'){
+					viewObj.viewName = pos[i];
+				}
+			}
+			
+			//if the html for the view was loaded with the previous view or page load then we don't need to fetch it
+			if(typeof(alreadyLoaded) !== 'undefined' && alreadyLoaded){
+				elm.style.opacity = "";
+				self.setView(viewObj);
+				return;
+			}
 			var url = self.viewsURL+view;
 			if(view.search("http") > -1){
 				url = view;
@@ -199,7 +238,7 @@ var VC = (function(){
 			VC.doXHR(url,function(html,success){
 				if(!success){
 					alert("error loading content");
-					elm.style.opacity = "1";
+					elm.style.opacity = "";
 					return;
 				}
 				self.setView(viewObj,html);
@@ -222,30 +261,44 @@ var VC = (function(){
 		
 		//deletes the controller object and all references to the view
 		deleteView: function(elm,prepForNew){
-			var viewObj = VC.getViewObject(elm);
-			//if there is a current view with a controller
-			if(viewObj.controller){
-				//clean out all event listeners that this view might have
-				VC.clearViewChangeListeners(viewObj.viewName);
-				//if the view controller has an onclose method
-				if(typeof(viewObj.controller.onclose) === 'function'){
-					viewObj.controller.onclose(viewObj);
-				}
-				delete viewObj.controller;
+			var objArr = [];
+			if(elm){
+				//delete just the view for this element
+				objArr[0] = VC.getViewObject(elm);
 			}
-			//remove the viewObject from the index
-			for(var i=0; i<self.arrViewObj.length; i++){
-				if(elm == self.arrViewObj[i].elm){
-					self.arrViewObj.splice(i,1);
-					break;
-				}
+			else{
+				//delete all views
+				objArr = self.arrViewObj;
 			}
-			if(typeof(prepForNew) === 'undefined' || !prepForNew){
-				elm.innerHTML = "";
-				//trigger an onchange for this element with a blank view object
-				viewObj = new self.ViewObject();
-				viewObj.elm = elm;
-				VC.onviewload(viewObj);
+			for(var v=0; v<objArr.length; v++){
+				var viewObj = objArr[v];
+				//if there is a current view with a controller
+				if(viewObj.controller){
+					//clean out all event listeners that this view might have
+					VC.clearViewChangeListeners(viewObj.viewName);
+					//if the view controller has an onclose method
+					if(typeof(viewObj.controller.onclose) === 'function'){
+						viewObj.controller.onclose(viewObj);
+					}
+					delete viewObj.controller;
+				}
+				if(!elm){
+					continue;
+				}
+				//remove the viewObject from the index
+				for(var i=0; i<self.arrViewObj.length; i++){
+					if(elm == self.arrViewObj[i].elm){
+						self.arrViewObj.splice(i,1);
+						break;
+					}
+				}
+				if(typeof(prepForNew) === 'undefined' || !prepForNew){
+					elm.innerHTML = "";
+					//trigger an onchange for this element with a blank view object
+					viewObj = new self.ViewObject();
+					viewObj.elm = elm;
+					VC.onviewload(viewObj);
+				}
 			}
 		},
 		
@@ -297,6 +350,11 @@ var VC = (function(){
 			}
 			self.viewsURL = url;
 		},
+        
+        //sets the default headers to be sent with each xhr request. Param format is [{name: xx, value: yy}]
+        setXHRHeaders: function(headerArr){
+            self.xhrHeaders = headerArr;
+        },
 		
 		//detect all forms and anchors in the element in the supplied viewObj, and alter their behavior to use the view system
 		setElmNavEvents: function(viewObj,elm){
