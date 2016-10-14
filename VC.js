@@ -351,10 +351,29 @@ var VC = (function(){
 			self.viewsURL = url;
 		},
         
-        //sets the default headers to be sent with each xhr request. Param format is [{name: xx, value: yy}]
-        setXHRHeaders: function(headerArr){
-            self.xhrHeaders = headerArr;
-        },
+		//adds to the default headers to be sent with each xhr request. Param format is {name: xx, value: yy}
+		addXHRHeader: function (headerObj) {
+			self.xhrHeaders[self.xhrHeaders.length] = headerObj;
+		},
+
+		//removes a specific default header, or all of them
+		removeXHRHeader: function(name){
+			//if name is undefined or null
+			if (typeof (name) === 'undefined' || !name) {
+				//remove all default headers
+				self.xhrHeaders = [];
+			}
+			else {
+				//find the specific header and remove it
+				for (var i = 0; i < self.xhrHeaders.length; i++)
+				{
+					if (self.xhrHeaders[i].name == name) {
+						self.xhrHeaders.splice(i, 1);
+						break;
+					}
+				}
+			}
+		},
 		
 		//detect all forms and anchors in the element in the supplied viewObj, and alter their behavior to use the view system
 		setElmNavEvents: function(viewObj,elm){
