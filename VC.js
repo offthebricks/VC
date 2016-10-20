@@ -66,8 +66,6 @@ var VC = (function(){
 				if(typeof(html) === 'string'){
 					viewObj.elm.innerHTML = html;
 				}
-				viewObj.elm.style.opacity = "";
-				self.setViewNavEvents(viewObj);
 				var noOnLoad = true;
 				//initialize controller if applicable
 				if(typeof(window[viewObj.viewName]) === 'function'){
@@ -134,8 +132,15 @@ var VC = (function(){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
 							var view = this.href.substring(window.location.href.lastIndexOf("/") + 1);
-							if(typeof(this.dataset.link) !== 'undefined'){
-								view = this.dataset.link;
+							if (typeof (this.dataset.vclink) !== 'undefined') {
+								view = this.dataset.vclink;
+							}
+							var aElm = viewObj.elm;
+							if (typeof (this.dataset.vcelm) !== 'undefined') {
+								aElm = document.getElementById(this.dataset.vcelm);
+								if (aElm === null) {
+									aElm = viewObj.elm;
+								}
 							}
 							VC.getView(viewObj.elm,view);
 							return false;
@@ -200,7 +205,6 @@ var VC = (function(){
 		
 		//gets the supplied view and puts it into the supplied element. The view should be the path of the view inside the views folder
 		getView: function(elm,view,formData,headers,alreadyLoaded){
-			elm.style.opacity = "0.5";
 			var viewObj = new self.ViewObject();
 			viewObj.elm = elm;
 			viewObj.view = view;
@@ -227,10 +231,10 @@ var VC = (function(){
 			
 			//if the html for the view was loaded with the previous view or page load then we don't need to fetch it
 			if(typeof(alreadyLoaded) !== 'undefined' && alreadyLoaded){
-				elm.style.opacity = "";
 				self.setView(viewObj);
 				return;
 			}
+			elm.style.opacity = "0.5";
 			var url = self.viewsURL+view;
 			if(view.search("http") > -1){
 				url = view;
@@ -382,6 +386,8 @@ var VC = (function(){
 
 		//called by a controller (usually from the controller's onstart) when the controller has finished loading
 		onviewload: function(viewObj){
+			self.setViewNavEvents(viewObj);
+			viewObj.elm.style.opacity = "";
 			var retArr = [];
 			var vcArr = self.arrViewChangeObj;
 			for(var i=0; i<vcArr.length; i++){
