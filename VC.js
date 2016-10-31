@@ -21,7 +21,7 @@ var VC = (function(){
 			viewsURL: "views/",
 			
 			//default http headers to send with every xml http request - format is [{name: xx, value: yy}]
-			xhrHeaders: [],
+			xhrHeaders: [{name: "XHR", value: "true"}],
 			
 			//current views and their controllers and parent elements
 			ViewObject: function(){
