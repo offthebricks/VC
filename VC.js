@@ -45,13 +45,13 @@ var VC = (function(){
 				//check the html for a redirect command
 				try{
 					var obj = JSON.parse(html);
-					//only redirect if obj has only one property named 'view' with an optional elmid property
-					if(Object.getOwnPropertyNames(obj).length <= 2 && typeof(obj.view) === 'string'){
+					//only redirect if obj has only one property named 'vcview' with an optional vcelm property
+					if(Object.getOwnPropertyNames(obj).length <= 2 && typeof(obj.vcview) === 'string'){
 						var elm = viewObj.elm;
-						if(typeof(obj.elmid) === 'string'){
-							elm = document.getElementById(obj.elmid);
+						if(typeof(obj.vcelm) === 'string'){
+							elm = document.getElementById(obj.vcelm);
 						}
-						VC.getView(elm,obj.view);
+						VC.getView(elm,obj.vcview);
 						return;
 					}
 				}
@@ -132,10 +132,12 @@ var VC = (function(){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
 							var view = this.href.substring(window.location.href.lastIndexOf("/") + 1);
-							if (typeof (this.dataset.vclink) !== 'undefined') {
-								view = this.dataset.vclink;
+							//if the anchor has specified a different view to load than the href
+							if (typeof (this.dataset.vcview) !== 'undefined') {
+								view = this.dataset.vcview;
 							}
 							var aElm = viewObj.elm;
+							//if the anchor is to target a different element
 							if (typeof (this.dataset.vcelm) !== 'undefined') {
 								aElm = document.getElementById(this.dataset.vcelm);
 								if (aElm === null) {
