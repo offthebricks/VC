@@ -29,6 +29,8 @@ var VC = (function(){
 				this.viewName = "";
 				this.elm = null;
 				this.controller = null;
+				this.html = null;
+				this.obj = null;
 			},
 			arrViewObj: [],
 			
@@ -42,6 +44,7 @@ var VC = (function(){
 			
 			//set the supplied html to the element in the supplied viewObj. Initialize the view's controller if applicable
 			setView: function(viewObj,html){
+				viewObj.html = html;
 				//check the html for a redirect command
 				try{
 					var obj = JSON.parse(html);
@@ -54,6 +57,7 @@ var VC = (function(){
 						VC.getView(elm,obj.vcview);
 						return;
 					}
+					viewObj.obj = obj;
 				}
 				catch(e){}
 				//get the old view in order to remove it
@@ -63,7 +67,8 @@ var VC = (function(){
 				}
 				//add the new view to the list
 				self.arrViewObj[self.arrViewObj.length] = viewObj;
-				if(typeof(html) === 'string'){
+				//only set the view content if it's not JSON encoded
+				if(typeof(html) === 'string' && viewObj.obj === null){
 					viewObj.elm.innerHTML = html;
 				}
 				var noOnLoad = true;
