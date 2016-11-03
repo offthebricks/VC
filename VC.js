@@ -52,7 +52,13 @@ var VC = (function(){
 					if(Object.getOwnPropertyNames(obj).length <= 2 && typeof(obj.vcview) === 'string'){
 						var elm = viewObj.elm;
 						if(typeof(obj.vcelm) === 'string'){
-							elm = document.getElementById(obj.vcelm);
+							if(obj.vcelm){
+								elm = document.getElementById(obj.vcelm);
+							}
+							else{
+								document.location = obj.vcview;
+								return;
+							}
 						}
 						VC.getView(elm,obj.vcview);
 						return;
