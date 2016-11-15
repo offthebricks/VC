@@ -25,12 +25,12 @@ var VC = (function(){
 			
 			//current views and their controllers and parent elements
 			ViewObject: function(){
-				this.view = "";
-				this.viewName = "";
-				this.elm = null;
-				this.controller = null;
-				this.html = null;
-				this.obj = null;
+				this.view = "";             //the full path of the view loaded (account/signup.htm)
+				this.viewName = "";         //just the name of the view (signup)
+				this.elm = null;            //a reference to the DOM element the view was loaded into
+				this.controller = null;     //a reference to the controller object assigned to the view
+				this.html = null;           //an unaltered copy of the text/code/html loaded into the element
+				this.obj = null;            //if the response was in JSON format, this contains the parse result
 			},
 			arrViewObj: [],
 			
@@ -132,7 +132,14 @@ var VC = (function(){
 						else{
 							view = view.substring(window.location.href.lastIndexOf("/") + 1);
 						}
-						VC.getView(viewObj.elm,view,formData);
+						var fElm = viewObj.elm;
+						if(typeof (this.dataset.vcelm) !== 'undefined'){
+							fElm = document.getElementById(this.dataset.vcelm);
+							if (fElm === null) {
+								fElm = viewObj.elm;
+							}
+						}
+						VC.getView(fElm,view,formData);
 						return false;
 					},false);
 				}
@@ -169,15 +176,28 @@ var VC = (function(){
 	//public properties and methods
 	return {
 		//quick and easy xhr calls to the server with GET and or POST parameters
-		doXHR: function(url,onload,formData,method,headers){
+		doXHR: function(url,onload,formData,method,headers,responseType){
 			var xmlhttp = new XMLHttpRequest();
 			xmlhttp.onreadystatechange = function(){
 				if(this.readyState == 4){
 					if(typeof(onload) === 'function'){
-						onload(this.responseText,this.status);
+						var responseStr = "";
+						try{
+							//this will fail if the response type is not convertible to string
+							responseStr = this.responseText;
+						}
+						catch(e){
+							onload(this.response,this.status);
+							return;
+						}
+						onload(responseStr,this.status);
 					}
 				}
 			};
+			//set response type
+			if(typeof(responseType) !== 'undefined' && responseType){
+				xmlhttp.responseType = responseType;
+			}
 			//set http method
 			if(typeof(method) === 'undefined' || !method){
 				if(typeof(formData) === 'undefined' || !formData){
@@ -189,7 +209,7 @@ var VC = (function(){
 			}
 			xmlhttp.open(method,url,true);
 			//check for custom headers
-			if(typeof(headers) !== 'undefined'){
+			if(typeof(headers) !== 'undefined' && headers){
 				for(var i=0; i<headers.length; i++){
 					xmlhttp.setRequestHeader(headers[i].name,headers[i].value);
 				}
@@ -373,7 +393,7 @@ var VC = (function(){
 			self.xhrHeaders[self.xhrHeaders.length] = headerObj;
 		},
 
-		//removes a specific default header, or all of them
+		//removes a specific default header, or all of them if name is null or undefined
 		removeXHRHeader: function(name){
 			//if name is undefined or null
 			if (typeof (name) === 'undefined' || !name) {
