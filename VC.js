@@ -130,7 +130,7 @@ var VC = (function(){
 							view = viewObj.view;
 						}
 						else{
-							view = view.substring(window.location.href.lastIndexOf("/") + 1);
+							view = view.replace(window.location.href,"");
 						}
 						var fElm = viewObj.elm;
 						if(typeof (this.dataset.vcelm) !== 'undefined'){
@@ -149,7 +149,7 @@ var VC = (function(){
 					if(alist[i].href && !alist[i].target){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
-							var view = this.href.substring(window.location.href.lastIndexOf("/") + 1);
+							var view = this.href.replace(window.location.href,"");
 							//if the anchor has specified a different view to load than the href
 							if (typeof (this.dataset.vcview) !== 'undefined') {
 								view = this.dataset.vcview;
