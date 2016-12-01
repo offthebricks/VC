@@ -162,7 +162,7 @@ var VC = (function(){
 									aElm = viewObj.elm;
 								}
 							}
-							VC.getView(viewObj.elm,view);
+							VC.getView(aElm,view);
 							return false;
 						},false);
 					}
