@@ -130,7 +130,11 @@ var VC = (function(){
 							view = viewObj.view;
 						}
 						else{
-							view = view.replace(window.location.href,"");
+							var href = window.location.href;
+							if(href.substring(href.length - 1) !== "/"){
+								href += "/";
+							}
+							view = view.replace(href,"");
 						}
 						var fElm = viewObj.elm;
 						if(typeof (this.dataset.vcelm) !== 'undefined'){
@@ -149,8 +153,12 @@ var VC = (function(){
 					if(alist[i].href && !alist[i].target){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
-							var view = this.href.replace(window.location.href,"");
-							//if the anchor has specified a different view to load than the href
+							var view = window.location.href;
+							if(view.substring(view.length - 1) !== "/"){
+								view += "/";
+							}
+							view = this.href.replace(view,"");
+							//if the anchor has specified a different view to load than the href - allows a nice looking link url with a different result
 							if (typeof (this.dataset.vcview) !== 'undefined') {
 								view = this.dataset.vcview;
 							}
@@ -209,29 +217,35 @@ var VC = (function(){
 			}
 			xmlhttp.open(method,url,true);
 			//check for custom headers
-			if(typeof(headers) !== 'undefined' && headers){
+			if(typeof(headers) === 'undefined'){
+				headers = [];
+			}
+			if(headers && headers.length > 0){
 				for(var i=0; i<headers.length; i++){
-					xmlhttp.setRequestHeader(headers[i].name,headers[i].value);
+					//make sure the header value has been set
+					if(typeof(headers[i].value) !== 'undefined'){
+						xmlhttp.setRequestHeader(headers[i].name,headers[i].value);
+					}
 				}
 			}
-            else{
-                headers = [];
-            }
-			//check for default headers
-			for(var i=0; i<self.xhrHeaders.length; i++){
-                //skip if found in passed headers
-                var found = false;
-                for(var v=0; v<headers.length; v++){
-                    if(headers[v].name == self.xhrHeaders[i].name){
-                        found = true;
-                        break;
-                    }
-                }
-                if(found){
-                    continue;
-                }
-                //set default header
-				xmlhttp.setRequestHeader(self.xhrHeaders[i].name,self.xhrHeaders[i].value);
+			//allow for override of default headers
+			if(headers !== false){
+				//check for default headers
+				for(var i=0; i<self.xhrHeaders.length; i++){
+					//skip if found in passed headers
+					var found = false;
+					for(var v=0; v<headers.length; v++){
+						if(headers[v].name == self.xhrHeaders[i].name){
+							found = true;
+							break;
+						}
+					}
+					if(found){
+						continue;
+					}
+					//set default header
+					xmlhttp.setRequestHeader(self.xhrHeaders[i].name,self.xhrHeaders[i].value);
+				}
 			}
 			xmlhttp.send(formData);
 		},
@@ -397,8 +411,11 @@ var VC = (function(){
 		removeXHRHeader: function(name){
 			//if name is undefined or null
 			if (typeof (name) === 'undefined' || !name) {
+				var archive = self.xhrHeaders;
 				//remove all default headers
 				self.xhrHeaders = [];
+				//return them so they can be restored if needed
+				return archive;
 			}
 			else {
 				//find the specific header and remove it
