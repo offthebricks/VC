@@ -126,11 +126,11 @@ var VC = (function(){
 							formData.append(aE.name,aE.value);
 						}
 						var view = this.action;
-						if(view.length == 0 || view == window.location.href){
+						if(view.length == 0 || view == document.baseURI){
 							view = viewObj.view;
 						}
 						else{
-							var href = window.location.href;
+							var view = document.baseURI;
 							if(href.substring(href.length - 1) !== "/"){
 								href += "/";
 							}
@@ -153,7 +153,7 @@ var VC = (function(){
 					if(alist[i].href && !alist[i].target){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
-							var view = window.location.href;
+							var view = document.baseURI;
 							if(view.substring(view.length - 1) !== "/"){
 								view += "/";
 							}
@@ -286,8 +286,8 @@ var VC = (function(){
 			if(view.search("http") > -1){
 				url = view;
 			}
-			VC.doXHR(url,function(html,success){
-				if(!success){
+			VC.doXHR(url,function(html,status){
+				if(status !== 200 && status !== 0){
 					alert("error loading content");
 					elm.style.opacity = "";
 					return;
