@@ -130,7 +130,7 @@ var VC = (function(){
 							view = viewObj.view;
 						}
 						else{
-							var view = document.baseURI;
+							var href = document.baseURI;
 							if(href.substring(href.length - 1) !== "/"){
 								href += "/";
 							}
