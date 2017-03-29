@@ -131,9 +131,7 @@ var VC = (function(){
 						}
 						else{
 							var href = document.baseURI;
-							if(href.substring(href.length - 1) !== "/"){
-								href += "/";
-							}
+							href = href.substring(0,href.lastIndexOf("/"))+"/";
 							view = view.replace(href,"");
 						}
 						var fElm = viewObj.elm;
@@ -154,9 +152,7 @@ var VC = (function(){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
 							var view = document.baseURI;
-							if(view.substring(view.length - 1) !== "/"){
-								view += "/";
-							}
+							view = view.substring(0,view.lastIndexOf("/"))+"/";
 							view = this.href.replace(view,"");
 							//if the anchor has specified a different view to load than the href - allows a nice looking link url with a different result
 							if (typeof (this.dataset.vcview) !== 'undefined') {
