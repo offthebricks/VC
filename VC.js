@@ -20,6 +20,9 @@ var VC = (function(){
 			//the full url to the views folder to use when relative paths are not reliable
 			viewsURL: "views/",
 			
+			//ids for elements which should have the scroll position of the parent set to zero after reloading
+			resetScroll: [],
+			
 			//default http headers to send with every xml http request - format is [{name: xx, value: yy}]
 			xhrHeaders: [{name: "XHR", value: "true"}],
 			
@@ -76,6 +79,14 @@ var VC = (function(){
 				//only set the view content if it's not JSON encoded
 				if(typeof(html) === 'string' && viewObj.obj === null){
 					viewObj.elm.innerHTML = html;
+					//if this element needs its parent's scroll position reset
+					if(self.resetScroll.length > 0 && viewObj.elm.id && self.resetScroll.indexOf(viewObj.elm.id) >= 0){
+						var pelm = viewObj.elm.parentNode;
+						//reset the element scroll position to the top as the browser won't do this with xhr
+						pelm.style.overflow = "hidden";		//for broadest compatibility
+						pelm.scrollTop = 0;
+						pelm.style.overflow = "";
+					}
 				}
 				var noOnLoad = true;
 				//initialize controller if applicable
