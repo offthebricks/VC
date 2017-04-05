@@ -131,7 +131,14 @@ var VC = (function(){
 						}
 						else{
 							var href = document.baseURI;
-							href = href.substring(0,href.lastIndexOf("/"))+"/";
+							//either add a slash at the end, or remove a file from the base, or do nothing
+							var temp = href.substring(href.lastIndexOf("/"));
+							if(temp.indexOf(".") >= 0){
+								href = href.substring(0,href.lastIndexOf("/"))+"/";
+							}
+							else if(temp.length > 1){
+								href += "/";
+							}
 							view = view.replace(href,"");
 						}
 						var fElm = viewObj.elm;
@@ -152,7 +159,14 @@ var VC = (function(){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
 							var view = document.baseURI;
-							view = view.substring(0,view.lastIndexOf("/"))+"/";
+							//either add a slash at the end, or remove a file from the base, or do nothing
+							var temp = view.substring(view.lastIndexOf("/"));
+							if(temp.indexOf(".") >= 0){
+								view = view.substring(0,view.lastIndexOf("/") + 1);
+							}
+							else if(temp.length > 1){
+								view += "/";
+							}
 							view = this.href.replace(view,"");
 							//if the anchor has specified a different view to load than the href - allows a nice looking link url with a different result
 							if (typeof (this.dataset.vcview) !== 'undefined') {
