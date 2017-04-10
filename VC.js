@@ -179,9 +179,17 @@ var VC = (function(){
 								view += "/";
 							}
 							view = this.href.replace(view,"");
-							//if the anchor has specified a different view to load than the href - allows a nice looking link url with a different result
-							if (typeof (this.dataset.vcview) !== 'undefined') {
-								view = this.dataset.vcview;
+							//if the anchor has specified a different view or url to load than the href - allows a nice looking link url with a different result
+							if (typeof (this.dataset.vchref) !== 'undefined') {
+								view = this.dataset.vchref;
+							}
+							else if(typeof(this.dataset.vcview) !== 'undefined'){
+								var pos = view.indexOf("?");
+								temp = "";
+								if(pos >= 0){
+									temp = view.substring(pos);
+								}
+								view = this.dataset.vcview + temp;
 							}
 							var aElm = viewObj.elm;
 							//if the anchor is to target a different element
