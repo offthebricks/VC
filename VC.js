@@ -48,9 +48,10 @@ var VC = (function(){
 			//set the supplied html to the element in the supplied viewObj. Initialize the view's controller if applicable
 			setView: function(viewObj,html){
 				viewObj.html = html;
+				var obj = {};
 				//check the html for a redirect command
 				try{
-					var obj = JSON.parse(html);
+					obj = JSON.parse(html);
 					//only redirect if obj has only one property named 'vcview' with an optional vcelm property
 					if(Object.getOwnPropertyNames(obj).length <= 2 && typeof(obj.vcview) === 'string'){
 						var elm = viewObj.elm;
@@ -81,18 +82,22 @@ var VC = (function(){
 					viewObj.elm.innerHTML = html;
 					//if this element needs its parent's scroll position reset
 					if(self.resetScroll.length > 0 && viewObj.elm.id && self.resetScroll.indexOf(viewObj.elm.id) >= 0){
-						var pelm = viewObj.elm.parentNode;
 						//reset the element scroll position to the top as the browser won't do this with xhr
-						pelm.style.overflow = "hidden";		//for broadest compatibility
-						pelm.scrollTop = 0;
-						pelm.style.overflow = "";
+						var pelm = viewObj.elm;
+						do{
+							pelm.style.overflow = "hidden";		//for broadest compatibility
+							pelm.scrollTop = 0;
+							pelm.style.overflow = "";
+							//reset the parent as well in case it's the element that was scrolling
+							pelm = pelm.parentNode;
+						} while(pelm == viewObj.elm.parentNode);	//this will run the loop twice
 					}
 				}
 				var noOnLoad = true;
 				//initialize controller if applicable
 				if(typeof(window[viewObj.viewName]) === 'function'){
 					//get parameters
-					var obj = {};
+					obj = {};
 					var path = viewObj.view.split("?");
 					if(path.length > 1){
 						path = path[1];
@@ -130,6 +135,7 @@ var VC = (function(){
 					}
 					forms[i].addEventListener("submit",function(event){
 						event.preventDefault();
+						event.stopPropagation();
 						var formData = new FormData(this);
 						//check if a submit button triggered this call - it will not be included in the FormData so we need to add it
 						var aE = document.activeElement;
@@ -158,6 +164,9 @@ var VC = (function(){
 							if (fElm === null) {
 								fElm = viewObj.elm;
 							}
+							if(fElm.style.display == "none"){
+								fElm.style.display = "";
+							}
 						}
 						VC.getView(fElm,view,formData);
 						return false;
@@ -169,6 +178,7 @@ var VC = (function(){
 					if(alist[i].href && !alist[i].target){
 						alist[i].addEventListener("click",function(event){
 							event.preventDefault();
+							event.stopPropagation();
 							var view = document.baseURI;
 							//either add a slash at the end, or remove a file from the base, or do nothing
 							var temp = view.substring(view.lastIndexOf("/"));
@@ -197,6 +207,9 @@ var VC = (function(){
 								aElm = document.getElementById(this.dataset.vcelm);
 								if (aElm === null) {
 									aElm = viewObj.elm;
+								}
+								if(aElm.style.display == "none"){
+									aElm.style.display = "";
 								}
 							}
 							VC.getView(aElm,view);
