@@ -46,7 +46,7 @@ var VC = (function(){
 			arrViewChangeObj: [],
 			
 			//set the supplied html to the element in the supplied viewObj. Initialize the view's controller if applicable
-			setView: function(viewObj,html){
+			setView: function(viewObj,html,formData){
 				viewObj.html = html;
 				var obj = {};
 				//check the html for a redirect command
@@ -98,6 +98,15 @@ var VC = (function(){
 				if(typeof(window[viewObj.viewName]) === 'function'){
 					//get parameters
 					obj = {};
+					if(typeof(formData) === 'object'){
+						obj = formData;
+					}
+					else if(typeof(formData) === 'string'){
+						try{
+							obj = JSON.parse(formData);
+						}
+						catch(e){}
+					}
 					var path = viewObj.view.split("?");
 					if(path.length > 1){
 						path = path[1];
@@ -108,7 +117,7 @@ var VC = (function(){
 						}
 					}
 					//init
-					viewObj.controller = new window[viewObj.viewName](obj);
+					viewObj.controller = new window[viewObj.viewName](obj,viewObj);
 					//check if the controller implements onload
 					if(typeof(viewObj.controller.onload) === 'function'){
 						viewObj.controller.onload(viewObj);
@@ -320,7 +329,7 @@ var VC = (function(){
 			
 			//if the html for the view was loaded with the previous view or page load then we don't need to fetch it
 			if(typeof(alreadyLoaded) !== 'undefined' && alreadyLoaded){
-				self.setView(viewObj);
+				self.setView(viewObj,null,formData);
 				return;
 			}
 			elm.style.opacity = "0.5";
@@ -334,7 +343,7 @@ var VC = (function(){
 					elm.style.opacity = "";
 					return;
 				}
-				self.setView(viewObj,html);
+				self.setView(viewObj,html,formData);
 			},formData,headers);
 		},
 		
