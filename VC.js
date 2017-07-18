@@ -303,6 +303,9 @@ var VC = (function(){
 		
 		//gets the supplied view and puts it into the supplied element. The view should be the path of the view inside the views folder
 		getView: function(elm,view,formData,headers,alreadyLoaded){
+			if(!elm){
+				return;
+			}
 			var viewObj = new self.ViewObject();
 			viewObj.elm = elm;
 			viewObj.view = view;
