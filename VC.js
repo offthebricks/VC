@@ -26,6 +26,9 @@ var VC = (function(){
 			//default http headers to send with every xml http request - format is [{name: xx, value: yy}]
 			xhrHeaders: [{name: "XHR", value: "true"}],
 			
+			//default response http headers to fetch and load to the viewObj.initObj after every completed xml http request - format is [name]
+			responseHeaders: [],
+			
 			//current views and their controllers and parent elements
 			ViewObject: function(){
 				this.view = "";             //the full path of the view loaded (account/signup.htm)
@@ -33,7 +36,9 @@ var VC = (function(){
 				this.elm = null;            //a reference to the DOM element the view was loaded into
 				this.controller = null;     //a reference to the controller object assigned to the view
 				this.html = null;           //an unaltered copy of the text/code/html loaded into the element
-				this.obj = null;            //if the response was in JSON format, this contains the parse result
+				this.responseObj = null;    //if the response was in JSON format, this contains the parse result
+				this.initObj = null;		//contains any parameters or passed objects
+				this.loaded = false;
 			},
 			arrViewObj: [],
 			
@@ -46,12 +51,16 @@ var VC = (function(){
 			arrViewChangeObj: [],
 			
 			//set the supplied html to the element in the supplied viewObj. Initialize the view's controller if applicable
-			setView: function(viewObj,html,formData){
+			setView: function(viewObj,html){
 				viewObj.html = html;
-				var obj = {};
 				//check the html for a redirect command
 				try{
-					obj = JSON.parse(html);
+					//if the view was already loaded
+					if(html === null){
+						html = viewObj.elm.innerHTML;
+						viewObj.elm.innerHTML = "";
+					}
+					var obj = JSON.parse(html);
 					//only redirect if obj has only one property named 'vcview' with an optional vcelm property
 					if(Object.getOwnPropertyNames(obj).length <= 2 && typeof(obj.vcview) === 'string'){
 						var elm = viewObj.elm;
@@ -67,7 +76,7 @@ var VC = (function(){
 						VC.getView(elm,obj.vcview);
 						return;
 					}
-					viewObj.obj = obj;
+					viewObj.responseObj = obj;
 				}
 				catch(e){}
 				//get the old view in order to remove it
@@ -78,54 +87,24 @@ var VC = (function(){
 				//add the new view to the list
 				self.arrViewObj[self.arrViewObj.length] = viewObj;
 				//only set the view content if it's not JSON encoded
-				if(typeof(html) === 'string' && viewObj.obj === null){
+				if(typeof(html) === 'string' && viewObj.responseObj === null){
 					viewObj.elm.innerHTML = html;
 					//if this element needs its parent's scroll position reset
 					if(self.resetScroll.length > 0 && viewObj.elm.id && self.resetScroll.indexOf(viewObj.elm.id) >= 0){
+						var pelm = viewObj.elm.parentNode;
 						//reset the element scroll position to the top as the browser won't do this with xhr
-						var pelm = viewObj.elm;
-						do{
-							pelm.style.overflow = "hidden";		//for broadest compatibility
-							pelm.scrollTop = 0;
-							pelm.style.overflow = "";
-							//reset the parent as well in case it's the element that was scrolling
-							pelm = pelm.parentNode;
-						} while(pelm == viewObj.elm.parentNode);	//this will run the loop twice
+						pelm.style.overflow = "hidden";		//for broadest compatibility
+						pelm.scrollTop = 0;
+						pelm.style.overflow = "";
 					}
 				}
-				var noOnLoad = true;
-				//initialize controller if applicable
-				if(typeof(window[viewObj.viewName]) === 'function'){
-					//get parameters
-					obj = {};
-					if(typeof(formData) === 'object'){
-						obj = formData;
-					}
-					else if(typeof(formData) === 'string'){
-						try{
-							obj = JSON.parse(formData);
-						}
-						catch(e){}
-					}
-					var path = viewObj.view.split("?");
-					if(path.length > 1){
-						path = path[1];
-						var parts = path.split("&");
-						for(var i=0; i<parts.length; i++){
-							var data = parts[i].split("=");
-							obj[data[0]] = data[1];
-						}
-					}
-					//init
-					viewObj.controller = new window[viewObj.viewName](obj,viewObj);
-					//check if the controller implements onload
-					if(typeof(viewObj.controller.onload) === 'function'){
-						viewObj.controller.onload(viewObj);
-						noOnLoad = false;
-					}
+				
+				//check if the controller implements onload
+				if(viewObj.controller && typeof(viewObj.controller.onload) === 'function'){
+					viewObj.controller.onload(viewObj);
 				}
-				//check if we need to manually call onviewload
-				if(noOnLoad){
+				//manually call onviewload
+				else{
 					VC.onviewload(viewObj);
 				}
 			},
@@ -136,96 +115,110 @@ var VC = (function(){
 					elm = viewObj.elm;
 				}
 				//set all forms to post with doXHR and formData instead of normal submit
+				var onsubmit = function(event){
+					event.preventDefault();
+					var formData = new FormData(this);
+					//check if a submit button triggered this call - it will not be included in the FormData so we need to add it
+					var aE = document.activeElement;
+					if(aE && aE.tagName.toLowerCase() == 'input' && aE.type == 'submit' && aE.name){
+						formData.append(aE.name,aE.value);
+					}
+					var view = this.action;
+					if(view.length == 0 || view == document.baseURI){
+						view = viewObj.view;
+					}
+					else{
+						var href = document.baseURI;
+						//either add a slash at the end, or remove a file from the base, or do nothing
+						var temp = href.substring(href.lastIndexOf("/"));
+						if(temp.indexOf(".") >= 0 || temp.indexOf("?") >= 0){
+							href = href.substring(0,href.lastIndexOf("/"))+"/";
+						}
+						else if(temp.length > 1){
+							href += "/";
+						}
+						view = view.replace(href,"");
+					}
+					var fElm = viewObj.elm;
+					if(typeof (this.dataset.vcelm) !== 'undefined'){
+						fElm = document.getElementById(this.dataset.vcelm);
+						if (fElm === null) {
+							fElm = viewObj.elm;
+						}
+					}
+					VC.getView(fElm,view,formData);
+					return false;
+				};
 				var forms = elm.getElementsByTagName("form");
 				for(var i=0; i<forms.length; i++){
 					//if the form has a target set, then don't adjust it
 					if(forms[i].target){
 						continue;
 					}
-					forms[i].addEventListener("submit",function(event){
-						event.preventDefault();
-						event.stopPropagation();
-						var formData = new FormData(this);
-						//check if a submit button triggered this call - it will not be included in the FormData so we need to add it
-						var aE = document.activeElement;
-						if(aE && aE.tagName.toLowerCase() == 'input' && aE.type == 'submit' && aE.name){
-							formData.append(aE.name,aE.value);
-						}
-						var view = this.action;
-						if(view.length == 0 || view == document.baseURI){
-							view = viewObj.view;
-						}
-						else{
-							var href = document.baseURI;
-							//either add a slash at the end, or remove a file from the base, or do nothing
-							var temp = href.substring(href.lastIndexOf("/"));
-							if(temp.indexOf(".") >= 0){
-								href = href.substring(0,href.lastIndexOf("/"))+"/";
-							}
-							else if(temp.length > 1){
-								href += "/";
-							}
-							view = view.replace(href,"");
-						}
-						var fElm = viewObj.elm;
-						if(typeof (this.dataset.vcelm) !== 'undefined'){
-							fElm = document.getElementById(this.dataset.vcelm);
-							if (fElm === null) {
-								fElm = viewObj.elm;
-							}
-							if(fElm.style.display == "none"){
-								fElm.style.display = "";
-							}
-						}
-						VC.getView(fElm,view,formData);
-						return false;
-					},false);
+					forms[i].addEventListener("submit",onsubmit,false);
 				}
 				//set all anchors that have href and no target to load a view instead
+				var onclick = function(event){
+					event.preventDefault();
+					var view = document.baseURI;
+					//either add a slash at the end, or remove a file from the base, or do nothing
+					var temp = view.substring(view.lastIndexOf("/"));
+					if(temp.indexOf(".") >= 0 || temp.indexOf("?") >= 0){
+						view = view.substring(0,view.lastIndexOf("/") + 1);
+					}
+					else if(temp.length > 1){
+						view += "/";
+					}
+					view = this.href.replace(view,"");
+					//if the anchor has specified a different view to load than the href - allows a nice looking link url with a different result
+					if (typeof (this.dataset.vcview) !== 'undefined') {
+						view = this.dataset.vcview;
+					}
+					var aElm = viewObj.elm;
+					//if the anchor is to target a different element
+					if (typeof (this.dataset.vcelm) !== 'undefined') {
+						aElm = document.getElementById(this.dataset.vcelm);
+						if (aElm === null) {
+							aElm = viewObj.elm;
+						}
+					}
+					VC.getView(aElm,view);
+					return false;
+				};
 				var alist = elm.getElementsByTagName("a");
 				for(i=0; i<alist.length; i++){
 					if(alist[i].href && !alist[i].target){
-						alist[i].addEventListener("click",function(event){
-							event.preventDefault();
-							event.stopPropagation();
-							var view = document.baseURI;
-							//either add a slash at the end, or remove a file from the base, or do nothing
-							var temp = view.substring(view.lastIndexOf("/"));
-							if(temp.indexOf(".") >= 0){
-								view = view.substring(0,view.lastIndexOf("/") + 1);
-							}
-							else if(temp.length > 1){
-								view += "/";
-							}
-							view = this.href.replace(view,"");
-							//if the anchor has specified a different view or url to load than the href - allows a nice looking link url with a different result
-							if (typeof (this.dataset.vchref) !== 'undefined') {
-								view = this.dataset.vchref;
-							}
-							else if(typeof(this.dataset.vcview) !== 'undefined'){
-								var pos = view.indexOf("?");
-								temp = "";
-								if(pos >= 0){
-									temp = view.substring(pos);
-								}
-								view = this.dataset.vcview + temp;
-							}
-							var aElm = viewObj.elm;
-							//if the anchor is to target a different element
-							if (typeof (this.dataset.vcelm) !== 'undefined') {
-								aElm = document.getElementById(this.dataset.vcelm);
-								if (aElm === null) {
-									aElm = viewObj.elm;
-								}
-								if(aElm.style.display == "none"){
-									aElm.style.display = "";
-								}
-							}
-							VC.getView(aElm,view);
-							return false;
-						},false);
+						self.addClickHandler(alist[i],onclick);
 					}
 				}
+			},
+			
+			//override this with VC.setAddClickHandler
+			addClickHandler: function(element,handler){
+				element.addEventListener("click",handler,false);
+			},
+			
+			getInitObject: function(view,formData){
+				//get parameters
+				var obj = {};
+				if(typeof(formData) === 'object' && formData){
+					obj = formData;
+				}
+				else if(typeof(formData) === 'string'){
+					try{
+						obj = JSON.parse(formData);
+					}
+					catch(e){}
+				}
+				var parts = view.split("?");
+				if(parts.length > 1){
+					parts = parts[1].split("&");
+					for(var i=0; i<parts.length; i++){
+						var data = parts[i].split("=");
+						obj[data[0]] = data[1];
+					}
+				}
+				return obj;
 			}
 		};
 	})();
@@ -235,27 +228,37 @@ var VC = (function(){
 	//public properties and methods
 	return {
 		//quick and easy xhr calls to the server with GET and or POST parameters
-		doXHR: function(url,onload,formData,method,headers,responseType){
+		//custom can be an array of customer values to assign to the XHR request (ie responseType). Format is [{name:xx,value:xx}]
+		doXHR: function(url,onload,formData,method,headers,custom){
 			var xmlhttp = new XMLHttpRequest();
 			xmlhttp.onreadystatechange = function(){
 				if(this.readyState == 4){
 					if(typeof(onload) === 'function'){
+						var headers = null, responseHeaders = self.responseHeaders;
+						if(responseHeaders.length > 0){
+							headers = {};
+							for(var i=0; i<responseHeaders.length; i++){
+								headers[responseHeaders[i]] = xmlhttp.getResponseHeader(responseHeaders[i]);
+							}
+						}
 						var responseStr = "";
 						try{
 							//this will fail if the response type is not convertible to string
 							responseStr = this.responseText;
 						}
 						catch(e){
-							onload(this.response,this.status);
+							onload(this.response,this.status,headers);
 							return;
 						}
-						onload(responseStr,this.status);
+						onload(responseStr,this.status,headers);
 					}
 				}
 			};
-			//set response type
-			if(typeof(responseType) !== 'undefined' && responseType){
-				xmlhttp.responseType = responseType;
+			//set specific properties of the xmlhttp object
+			if(typeof(custom) === 'object'){
+				for(var i=0; i<custom.length; i++){
+					xmlhttp[custom[i].name] = custom[i].value;
+				}
 			}
 			//set http method
 			if(typeof(method) === 'undefined' || !method){
@@ -304,50 +307,90 @@ var VC = (function(){
 		//gets the supplied view and puts it into the supplied element. The view should be the path of the view inside the views folder
 		getView: function(elm,view,formData,headers,alreadyLoaded){
 			if(!elm){
-				return;
+				return null;
 			}
 			var viewObj = new self.ViewObject();
 			viewObj.elm = elm;
 			viewObj.view = view;
 			viewObj.viewName = view;
+			//strip parameters from the view to get controller object name/view name
+			var pos = viewObj.viewName.lastIndexOf("?");
+			if(pos > -1){
+				viewObj.viewName = view.substring(0,pos);
+			}
 			//strip extension from the view to get controller object name/view name
-			var pos = viewObj.viewName.lastIndexOf(".");
-			var poscheck = viewObj.viewName.lastIndexOf("/");
-			if(pos > -1 && pos > poscheck){
+			pos = viewObj.viewName.lastIndexOf(".");
+			if(pos > -1){
 				viewObj.viewName = viewObj.viewName.substring(0,pos);
 			}
-			else{
-				pos = viewObj.viewName.lastIndexOf("?");
-				if(pos > -1){
-					viewObj.viewName = viewObj.viewName.substring(0,pos);
-				}
+			//if the viewName is blank
+			if(viewObj.viewName.length == 0){
+				//set index as default like web servers do
+				viewObj.viewName = "index";
 			}
 			//look for an appropriate controller and set the viewName to it
 			pos = viewObj.viewName.split("/");
-			for(var i=0; i<pos.length; i++){
+			//create a underscore separated index first in case this is a namespaced view
+			if(pos.length > 1){
+				var namespace = "";
+				for(var i=0; i<pos.length; i++){
+					if(namespace){
+						namespace += "_";
+					}
+					namespace += pos[i];
+				}
+				pos.splice(0,0,namespace);
+			}
+			viewObj.initObj = self.getInitObject(viewObj.view,formData);
+			for(i=0; i<pos.length; i++){
 				if(pos[i] && typeof(window[pos[i]]) === 'function'){
+					//initialize controller
+					var check = viewObj.viewName;
+					viewObj.controller = new window[pos[i]](viewObj);
+					if(!(viewObj.controller instanceof window[pos[i]])){
+						//check for intentional redirect
+						if(viewObj.viewName !== check){
+							break;
+						}
+						continue;
+					}
 					viewObj.viewName = pos[i];
+					break;
 				}
 			}
 			
 			//if the html for the view was loaded with the previous view or page load then we don't need to fetch it
 			if(typeof(alreadyLoaded) !== 'undefined' && alreadyLoaded){
-				self.setView(viewObj,null,formData);
-				return;
+				self.setView(viewObj,null);
+				return viewObj;
 			}
 			elm.style.opacity = "0.5";
-			var url = self.viewsURL+view;
-			if(view.search("http") > -1){
-				url = view;
+			var url = self.viewsURL+viewObj.view;
+			if(viewObj.view.search("http") > -1){
+				url = viewObj.view;
 			}
-			VC.doXHR(url,function(html,status){
+			var refData = null;
+			if(typeof(formData) === 'string' || (typeof(window.FormData) !== 'undefined' && formData instanceof window.FormData)){
+				refData = formData;
+			}
+			VC.doXHR(url,function(html,status,headers){
 				if(status !== 200 && status !== 0){
-					alert("error loading content");
+					if(viewObj.controller && typeof(viewObj.controller.onloaderror) === 'function'){
+						viewObj.controller.onloaderror(html,status);
+					}
+					else{
+						alert("error loading content");
+					}
 					elm.style.opacity = "";
 					return;
 				}
-				self.setView(viewObj,html,formData);
-			},formData,headers);
+				if(headers !== null){
+					viewObj.initObj.headers = headers;
+				}
+				self.setView(viewObj,html);
+			},refData,headers);
+			
+			return viewObj;
 		},
 		
 		//get the view object for the view currently in the supplied element - if not found, return null
@@ -457,28 +500,67 @@ var VC = (function(){
 		},
         
 		//adds to the default headers to be sent with each xhr request. Param format is {name: xx, value: yy}
-		addXHRHeader: function (headerObj) {
+		addXHRHeader: function(headerObj) {
 			self.xhrHeaders[self.xhrHeaders.length] = headerObj;
 		},
 
 		//removes a specific default header, or all of them if name is null or undefined
 		removeXHRHeader: function(name){
-			//if name is undefined or null
-			if (typeof (name) === 'undefined' || !name) {
-				var archive = self.xhrHeaders;
+			//if name is undefined or empty
+			if (typeof (name) === 'undefined' || name.length == 0){
 				//remove all default headers
 				self.xhrHeaders = [];
-				//return them so they can be restored if needed
-				return archive;
+				return;
 			}
-			else {
-				//find the specific header and remove it
-				for (var i = 0; i < self.xhrHeaders.length; i++)
-				{
-					if (self.xhrHeaders[i].name == name) {
-						self.xhrHeaders.splice(i, 1);
-						break;
-					}
+			//find the specific header and remove it
+			for (var i = 0; i < self.xhrHeaders.length; i++)
+			{
+				if (self.xhrHeaders[i].name == name) {
+					self.xhrHeaders.splice(i, 1);
+					break;
+				}
+			}
+		},
+		
+		addResponseHeader: function(name){
+			var responseHeaders = self.responseHeaders;
+			responseHeaders[responseHeaders.length] = name;
+		},
+		
+		removeResponseHeader: function(name){
+			var i, responseHeaders = self.responseHeaders;
+			//if name is undefined or empty
+			if (typeof (name) === 'undefined' || name.length == 0){
+				//remove all response headers
+				responseHeaders = [];
+				return;
+			}
+			//find the specific header and remove it
+			for(i=0; i<responseHeaders.length; i++){
+				if(responseHeaders[i] == name){
+					responseHeaders.splice(i,1);
+					break;
+				}
+			}
+		},
+		
+		addResetScrollElm: function(id){
+			var resetScroll = self.resetScroll;
+			resetScroll[resetScroll.length] = id;
+		},
+		
+		removeResetScrollElm: function(id){
+			var i, resetScroll = self.resetScroll;
+			//if id is undefined or empty
+			if (typeof (id) === 'undefined' || id.length == 0){
+				//remove all elements
+				resetScroll = [];
+				return;
+			}
+			for(i=0; i<resetScroll.length; i++){
+				if(resetScroll[i] == id){
+					resetScroll.splice(i,1);
+					break;
 				}
 			}
 		},
@@ -487,9 +569,15 @@ var VC = (function(){
 		setElmNavEvents: function(viewObj,elm){
 			self.setViewNavEvents(viewObj,elm);
 		},
+		
+		//override the normal add click handler for anchors
+		setAddClickHandler: function(handler){
+			self.addClickHandler = handler;
+		},
 
 		//called by a controller (usually from the controller's onstart) when the controller has finished loading
 		onviewload: function(viewObj){
+			viewObj.loaded = true;
 			self.setViewNavEvents(viewObj);
 			viewObj.elm.style.opacity = "";
 			var retArr = [];
