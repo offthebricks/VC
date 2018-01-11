@@ -265,6 +265,10 @@ var VC = (function(){
 				if(typeof(formData) === 'undefined' || !formData){
 					method = "GET";
 				}
+				else if(typeof(formData) === 'object' && !(formData instanceof FormData)){
+					method = "GET";
+					formData = null;
+				}
 				else{
 					method = "POST";
 				}
