@@ -41,9 +41,8 @@ Like most MVC frameworks, you are not forced to use a Data Model system (althoug
 Views can exist with or without controllers. To define a controller just name a function after the file name (minus the extension). Parameters and view references are passed and onload and onclose methods are executed if they exist.
 ```
 //controller for the main view in the main element
-//initObj is an object containing any GET parameters
 //viewObj is an object describing the view and is described below
-function main(initObj, viewObj){
+function main(viewObj){
   var self = this;
   
   this.onload = function(viewObj){
@@ -92,5 +91,7 @@ ViewObject: function(){
     this.controller = null;     //a reference to the controller object assigned to the view
     this.html = null;           //an unaltered copy of the text/code/html loaded into the element
     this.obj = null;            //if the response was in JSON format, this contains the parse result
+    this.initObj = null;	    	//contains any parameters or passed objects
+		this.loaded = false;
 }
 ```
