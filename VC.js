@@ -1,12 +1,9 @@
 /*
 Copyright 2018 OffTheBricks - https://github.com/mircerlancerous/jsLight
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
  http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -229,7 +226,10 @@ var VC = (function(){
 	return {
 		//quick and easy xhr calls to the server with GET and or POST parameters
 		//custom can be an array of customer values to assign to the XHR request (ie responseType). Format is [{name:xx,value:xx}]
-		doXHR: function(url,onload,formData,method,headers,custom){
+		doXHR: function(url,onload,formData,options){
+			if(typeof(options) === 'undefined'){
+				options = {};
+			}
 			var xmlhttp = new XMLHttpRequest();
 			xmlhttp.onreadystatechange = function(){
 				if(this.readyState == 4){
@@ -254,27 +254,34 @@ var VC = (function(){
 					}
 				}
 			};
-			//set specific properties of the xmlhttp object
-			if(typeof(custom) === 'object'){
-				for(var i=0; i<custom.length; i++){
-					xmlhttp[custom[i].name] = custom[i].value;
-				}
+			//set response type
+			if(typeof(options.responseType) !== 'undefined' && options.responseType){
+				xmlhttp.responseType = options.responseType;
 			}
 			//set http method
-			if(typeof(method) === 'undefined' || !method){
+			if(typeof(options.method) === 'undefined' || !options.method){
 				if(typeof(formData) === 'undefined' || !formData){
-					method = "GET";
+					options.method = "GET";
 				}
 				else if(typeof(formData) === 'object' && !(formData instanceof FormData)){
-					method = "GET";
+					options.method = "GET";
 					formData = null;
 				}
 				else{
-					method = "POST";
+					options.method = "POST";
 				}
 			}
-			xmlhttp.open(method,url,true);
+			xmlhttp.open(options.method,url,true);
+			//set timeout
+			if(typeof(options.timeout) !== 'undefined'){		//0 for no limit
+				xmlhttp.timeout = options.timeout;
+			}
+			else{
+				//default to 10 seconds
+				xmlhttp.timeout = 10000;
+			}
 			//check for custom headers
+			var headers = options.headers;
 			if(typeof(headers) === 'undefined'){
 				headers = [];
 			}
@@ -392,7 +399,7 @@ var VC = (function(){
 					viewObj.initObj.headers = headers;
 				}
 				self.setView(viewObj,html);
-			},refData,headers);
+			},refData,{headers:headers});
 			
 			return viewObj;
 		},
