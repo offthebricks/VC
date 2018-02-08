@@ -120,12 +120,16 @@ var VC = (function(){
 					if(aE && aE.tagName.toLowerCase() == 'input' && aE.type == 'submit' && aE.name){
 						formData.append(aE.name,aE.value);
 					}
+					var baseURI = document.baseURI;
+					if(typeof(baseURI) === 'undefined'){
+						baseURI = window.location.href;
+					}
 					var view = this.action;
-					if(view.length == 0 || view == document.baseURI){
+					if(view.length == 0 || view == baseURI){
 						view = viewObj.view;
 					}
 					else{
-						var href = document.baseURI;
+						var href = baseURI;
 						//either add a slash at the end, or remove a file from the base, or do nothing
 						var temp = href.substring(href.lastIndexOf("/"));
 						if(temp.indexOf(".") >= 0 || temp.indexOf("?") >= 0){
@@ -158,6 +162,9 @@ var VC = (function(){
 				var onclick = function(event){
 					event.preventDefault();
 					var view = document.baseURI;
+					if(typeof(view) === 'undefined'){
+						view = window.location.href;
+					}
 					//either add a slash at the end, or remove a file from the base, or do nothing
 					var temp = view.substring(view.lastIndexOf("/"));
 					if(temp.indexOf(".") >= 0 || temp.indexOf("?") >= 0){
