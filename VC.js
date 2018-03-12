@@ -242,6 +242,9 @@ var VC = (function(){
 				if(this.readyState == 4){
 					if(typeof(onload) === 'function'){
 						var headers = null, responseHeaders = self.responseHeaders;
+						if(typeof(options.responseHeaders) !== 'undefined'){
+							responseHeaders = responseHeaders.concat(options.responseHeaders);
+						}
 						if(responseHeaders.length > 0){
 							headers = {};
 							for(var i=0; i<responseHeaders.length; i++){
