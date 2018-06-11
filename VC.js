@@ -1,9 +1,12 @@
 /*
 Copyright 2018 OffTheBricks - https://github.com/mircerlancerous/jsLight
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
  http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -89,6 +92,9 @@ var VC = (function(){
 					//if this element needs its parent's scroll position reset
 					if(self.resetScroll.length > 0 && viewObj.elm.id && self.resetScroll.indexOf(viewObj.elm.id) >= 0){
 						var pelm = viewObj.elm.parentNode;
+						while(pelm.scrollTop == 0 && pelm.tagName != "BODY"){
+							pelm = pelm.parentNode;
+						}
 						//reset the element scroll position to the top as the browser won't do this with xhr
 						pelm.style.overflow = "hidden";		//for broadest compatibility
 						pelm.scrollTop = 0;
@@ -117,7 +123,11 @@ var VC = (function(){
 					var formData = new FormData(this);
 					//check if a submit button triggered this call - it will not be included in the FormData so we need to add it
 					var aE = document.activeElement;
-					if(aE && aE.tagName.toLowerCase() == 'input' && aE.type == 'submit' && aE.name){
+					//if no element is in focus (aE == document body), replace with the submit event's original target
+					if(event.explicitOriginalTarget && aE && aE.tagName.toLowerCase() == 'body') {
+						aE = event.explicitOriginalTarget;
+					}
+					if(aE && aE.tagName && aE.tagName.toLowerCase() == 'input' && aE.type == 'submit' && aE.name){
 						formData.append(aE.name,aE.value);
 					}
 					var baseURI = document.baseURI;
@@ -125,7 +135,7 @@ var VC = (function(){
 						baseURI = window.location.href;
 					}
 					var view = this.action;
-					if(view.length == 0 || view == baseURI){
+					if((view.length == 0 || view == baseURI) && viewObj){
 						view = viewObj.view;
 					}
 					else{
@@ -140,11 +150,11 @@ var VC = (function(){
 						}
 						view = view.replace(href,"");
 					}
-					var fElm = viewObj.elm;
+					var fElm = elm;
 					if(typeof (this.dataset.vcelm) !== 'undefined'){
 						fElm = document.getElementById(this.dataset.vcelm);
 						if (fElm === null) {
-							fElm = viewObj.elm;
+							fElm = elm;
 						}
 					}
 					VC.getView(fElm,view,formData);
@@ -178,12 +188,12 @@ var VC = (function(){
 					if (typeof (this.dataset.vcview) !== 'undefined') {
 						view = this.dataset.vcview;
 					}
-					var aElm = viewObj.elm;
+					var aElm = elm;
 					//if the anchor is to target a different element
 					if (typeof (this.dataset.vcelm) !== 'undefined') {
 						aElm = document.getElementById(this.dataset.vcelm);
 						if (aElm === null) {
-							aElm = viewObj.elm;
+							aElm = elm;
 						}
 					}
 					VC.getView(aElm,view);
@@ -287,8 +297,8 @@ var VC = (function(){
 				xmlhttp.timeout = options.timeout;
 			}
 			else{
-				//default to 10 seconds
-				xmlhttp.timeout = 10000;
+				//default to 35 seconds
+				xmlhttp.timeout = 35000;
 			}
 			//check for custom headers
 			var headers = options.headers;
