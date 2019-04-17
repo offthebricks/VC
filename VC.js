@@ -314,7 +314,7 @@ var VC = (function(){
 				}
 			}
 			//allow for override of default headers
-			if(headers !== false){
+			if(headers !== false && (typeof(options.omitDefaultHeaders) !== 'boolean' || !options.omitDefaultHeaders)){
 				//check for default headers
 				for(var i=0; i<self.xhrHeaders.length; i++){
 					//skip if found in passed headers
