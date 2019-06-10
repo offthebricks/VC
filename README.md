@@ -45,7 +45,7 @@ Views can exist with or without controllers. To define a controller just name a 
 function main(viewObj){
   var self = this;
   
-  this.onload = function(viewObj){
+  this.onload = function(){
     
     //perform view initialization here
     
@@ -61,7 +61,7 @@ function main(viewObj){
 ```
 A versatile XHR function provides powerful access to web APIs while taking care of some of the more tedious syntax.
 ```
-doXHR: function(url, onload, formData, method, headers, responseType)
+doXHR: function(url,onload,formData,options)
 ```
 Anchors and forms can control other views by assigning a dataset value. This is especially useful for menu items controlling the main window.
 ```
@@ -91,7 +91,7 @@ ViewObject: function(){
     this.controller = null;     //a reference to the controller object assigned to the view
     this.html = null;           //an unaltered copy of the text/code/html loaded into the element
     this.obj = null;            //if the response was in JSON format, this contains the parse result
-    this.initObj = null;	    	//contains any parameters or passed objects
-		this.loaded = false;
+    this.initObj = null;	//contains any parameters or passed objects
+    this.loaded = false;
 }
 ```
