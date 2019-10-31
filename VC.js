@@ -229,7 +229,7 @@ var VC = (function(){
 					parts = parts[1].split("&");
 					for(var i=0; i<parts.length; i++){
 						var data = parts[i].split("=");
-						obj[data[0]] = data[1];
+						obj[data[0]] = decodeURIComponent(data[1]);
 					}
 				}
 				return obj;
@@ -297,8 +297,8 @@ var VC = (function(){
 				xmlhttp.timeout = options.timeout;
 			}
 			else{
-				//default to 35 seconds
-				xmlhttp.timeout = 35000;
+				//default to 60 seconds
+				xmlhttp.timeout = 60000;
 			}
 			//check for custom headers
 			var headers = options.headers;
@@ -604,6 +604,10 @@ var VC = (function(){
 		//override the normal add click handler for anchors
 		setAddClickHandler: function(handler){
 			self.addClickHandler = handler;
+		},
+		
+		parseURL: function(url){
+			return self.getInitObject(url);
 		},
 
 		//called by a controller (usually from the controller's onstart) when the controller has finished loading
