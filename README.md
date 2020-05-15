@@ -1,25 +1,25 @@
-# jsLight
-Ultra light-weight JavaScript Model View Controller (MVC) framework.
+# VC
+Ultra light-weight JavaScript View Controller (VC) framework.
 
 Designed to get your project up and running fast while not getting in your way. Super simple, highly extendable, easy to use to create single-page applications, and great for enhancing web pages or old designs. Works with any server-side technology. Create views just by telling the framework which element to put it in, and which url to get it from.
 ```
-//loads the content of views/main.php into an element with id 'main'
-VC.getView(document.getElementById("main"),"main.php");
+//loads the content of views/main.htm into an element with id 'main'
+VC.getView(document.getElementById("main"),"main.htm");
 ```
 No special markup language is required, making this possibly the easiest framework to learn. Write in natural HTML! The framework automatically detects forms and anchors and adjusts their behavior to match the framework. Just write your HTML the way you always have, use a server-side language (PHP, ASP, etc), or build it dynamically with JavaScript in your controller.
 ```
-<!--Loads the content in views/main.php into the element defined in VC.getView-->
-<a href="main.php">Goto Main</a>
+<!--Loads the content in views/main.htm into the element defined in VC.getView-->
+<a href="main.htm">Goto Main</a>
 ```
 ```
-<!--Performs an XHR POST to views/account/create.php and loads the response to the element defined in VC.getView-->
+<!--Performs an XHR POST to views/account/create.php and loads the response to the view's parent element (ie #main)-->
 <form href="account/create.php">
   Name<input type="text" name="name"/>
 </form>
 ```
 If you want the framework to leave your links and forms alone, just define a target
 ```
-<a href="https://github.com/mircerlancerous/jsLight" target="_blank">jsLight</a>
+<a href="https://github.com/offthebricks/VC" target="_blank">VC by OffTheBricks</a>
 ```
 ```
 <!--Does a full page reload with a POST to search.php-->
@@ -36,30 +36,29 @@ setViewChangeListener: function(elm,viewName,onchange)
 //removes all view change listeners for the supplied view. If viewName is undefined, then all listeners are removed
 clearViewChangeListeners: function(viewName)
 ```
-Like most MVC frameworks, you are not forced to use a Data Model system (although it's recommended). Setup your view controllers to access your js or server based data models. Set and trigger view change listeners at anytime to trigger actions without view reloads. Setup your controllers to manage view data, and data between views, however you want.
+Go full MVC and configure your view controllers to use your js or server based data models. Set and trigger view change listeners at anytime to trigger actions without view reloads. Setup your controllers to manage view data, and data between views, however you want.
 
 Views can exist with or without controllers. To define a controller just name a function after the file name (minus the extension). Parameters and view references are passed and onload and onclose methods are executed if they exist.
 ```
 //controller for the main view in the main element
 //viewObj is an object describing the view and is described below
 function main(viewObj){
-  var self = this;
   
   this.onload = function(){
     
     //perform view initialization here
     
-    VC.onviewload(viewObj);   //tell the framework that we're done loading and it can trigger any applicable listeners
+    VC.onviewload(viewObj);   //tell the framework that we're done loading, so that it can trigger any applicable listeners
   };
   
-  this.onclose = function(viewObj){
+  this.onclose = function(){
     
     //clean up any loose ends here (listeners, timers, etc)
     
   };
 }
 ```
-A versatile XHR function provides powerful access to web APIs while taking care of some of the more tedious syntax.
+A versatile XHR wrapper function provides powerful access to web APIs while taking care of some of the more tedious syntax.
 ```
 doXHR: function(url,onload,formData,options)
 ```
