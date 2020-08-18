@@ -439,7 +439,7 @@ var VC = (function(){
 		},
 		
 		//deletes the controller object and all references to the view
-		deleteView: function(elm,prepForNew){
+		deleteView: function(elm,leaveContent){
 			var objArr = [];
 			if(elm){
 				//delete just the view for this element
@@ -471,7 +471,7 @@ var VC = (function(){
 						break;
 					}
 				}
-				if(typeof(prepForNew) === 'undefined' || !prepForNew){
+				if(typeof(leaveContent) === 'undefined' || !leaveContent){
 					elm.innerHTML = "";
 					//trigger an onchange for this element with a blank view object
 					viewObj = new self.ViewObject();
