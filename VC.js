@@ -18,13 +18,13 @@ var VC = (function(){
 	var self = (function(){
 		return {
 			//the full url to the views folder to use when relative paths are not reliable
-			viewsURL: "views/",
+			viewsURL: "",
 			
 			//ids for elements which should have the scroll position of the parent set to zero after reloading
 			resetScroll: [],
 			
 			//default http headers to send with every xml http request - format is [{name: xx, value: yy}]
-			xhrHeaders: [{name: "XHR", value: "true"}],
+			xhrHeaders: [],
 			
 			//default response http headers to fetch and load to the viewObj.initObj after every completed xml http request - format is [name]
 			responseHeaders: [],
@@ -52,13 +52,14 @@ var VC = (function(){
 			
 			//set the supplied html to the element in the supplied viewObj. Initialize the view's controller if applicable
 			setView: function(viewObj,html){
+				let alreadyLoaded = false;
 				viewObj.html = html;
 				//check the html for a redirect command
 				try{
 					//if the view was already loaded
 					if(html === null){
+						alreadyLoaded = true;
 						html = viewObj.elm.innerHTML;
-						viewObj.elm.innerHTML = "";
 					}
 					var obj = JSON.parse(html);
 					//only redirect if obj has only one property named 'vcview' with an optional vcelm property
@@ -87,8 +88,8 @@ var VC = (function(){
 				//add the new view to the list
 				self.arrViewObj[self.arrViewObj.length] = viewObj;
 				//only set the view content if it's not JSON encoded
-				if(typeof(html) === 'string' && viewObj.responseObj === null){
-					viewObj.elm.innerHTML = html;
+				if(!alreadyLoaded && typeof(html) === 'string' && viewObj.responseObj === null){
+					VC.setInnerHTML(viewObj.elm,html);
 					//if this element needs its parent's scroll position reset
 					if(self.resetScroll.length > 0 && viewObj.elm.id && self.resetScroll.indexOf(viewObj.elm.id) >= 0){
 						var pelm = viewObj.elm.parentNode;
@@ -96,9 +97,9 @@ var VC = (function(){
 							pelm = pelm.parentNode;
 						}
 						//reset the element scroll position to the top as the browser won't do this with xhr
-						pelm.style.overflow = "hidden";		//for broadest compatibility
+						VC.setElementStyle(pelm,"overflow","hidden");		//for broadest compatibility
 						pelm.scrollTop = 0;
-						pelm.style.overflow = "";
+						VC.setElementStyle(pelm,"overflow","");
 					}
 				}
 				
@@ -395,7 +396,7 @@ var VC = (function(){
 				self.setView(viewObj,null);
 				return viewObj;
 			}
-			elm.style.opacity = "0.5";
+			VC.setElementStyle(elm,"opacity","0.5");
 			var url = self.viewsURL+viewObj.view;
 			if(viewObj.view.search("http") > -1){
 				url = viewObj.view;
@@ -412,7 +413,7 @@ var VC = (function(){
 					else{
 						alert("error loading content");
 					}
-					elm.style.opacity = "";
+					VC.setElementStyle(elm,"opacity","");
 					return;
 				}
 				if(headers !== null){
@@ -472,7 +473,7 @@ var VC = (function(){
 					}
 				}
 				if(typeof(leaveContent) === 'undefined' || !leaveContent){
-					elm.innerHTML = "";
+					VC.setInnerHTML(elm,"");
 					//trigger an onchange for this element with a blank view object
 					viewObj = new self.ViewObject();
 					viewObj.elm = elm;
@@ -609,12 +610,21 @@ var VC = (function(){
 		parseURL: function(url){
 			return self.getInitObject(url);
 		},
+		
+		//override if customized innerHTML setting is required
+		setInnerHTML: function(elm,html){
+			elm.innerHTML = html
+		},
+		//override if customized style setting is required
+		setElementStyle: function(elm,key,value){
+			elm.style[key] = value;
+		},
 
 		//called by a controller (usually from the controller's onstart) when the controller has finished loading
 		onviewload: function(viewObj){
 			viewObj.loaded = true;
 			self.setViewNavEvents(viewObj);
-			viewObj.elm.style.opacity = "";
+			VC.setElementStyle(viewObj.elm,"opacity","");
 			var retArr = [];
 			var vcArr = self.arrViewChangeObj;
 			for(var i=0; i<vcArr.length; i++){
