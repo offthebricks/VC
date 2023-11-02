@@ -39,6 +39,9 @@ var VC = (function(){
 				this.responseObj = null;    //if the response was in JSON format, this contains the parse result
 				this.initObj = null;		//contains any parameters or passed objects
 				this.loaded = false;
+				this.onload = function(){
+					VC.onviewload(this);
+				};
 			},
 			arrViewObj: [],
 			
@@ -139,7 +142,7 @@ var VC = (function(){
 					if((view.length == 0 || view == baseURI) && viewObj){
 						view = viewObj.view;
 					}
-					else{
+					else if(self.viewsURL){
 						var href = baseURI;
 						//either add a slash at the end, or remove a file from the base, or do nothing
 						var temp = href.substring(href.lastIndexOf("/"));
@@ -172,21 +175,24 @@ var VC = (function(){
 				//set all anchors that have href and no target to load a view instead
 				var onclick = function(event){
 					event.preventDefault();
-					var view = document.baseURI;
-					if(typeof(view) === 'undefined'){
-						view = window.location.href;
+					var view = this.href;
+					if(self.viewsURL){
+						view = document.baseURI;
+						if(typeof(view) === 'undefined'){
+							view = window.location.href;
+						}
+						//either add a slash at the end, or remove a file from the base, or do nothing
+						var temp = view.substring(view.lastIndexOf("/"));
+						if(temp.indexOf(".") >= 0 || temp.indexOf("?") >= 0){
+							view = view.substring(0,view.lastIndexOf("/") + 1);
+						}
+						else if(temp.length > 1){
+							view += "/";
+						}
+						view = this.href.replace(view,"");
 					}
-					//either add a slash at the end, or remove a file from the base, or do nothing
-					var temp = view.substring(view.lastIndexOf("/"));
-					if(temp.indexOf(".") >= 0 || temp.indexOf("?") >= 0){
-						view = view.substring(0,view.lastIndexOf("/") + 1);
-					}
-					else if(temp.length > 1){
-						view += "/";
-					}
-					view = this.href.replace(view,"");
 					//if the anchor has specified a different view to load than the href - allows a nice looking link url with a different result
-					if (typeof (this.dataset.vcview) !== 'undefined') {
+					else if (typeof (this.dataset.vcview) !== 'undefined') {
 						view = this.dataset.vcview;
 					}
 					var aElm = elm;
@@ -611,11 +617,11 @@ var VC = (function(){
 			return self.getInitObject(url);
 		},
 		
-		//override if customized innerHTML setting is required
+		//override if customized innerHTML setting is required - ie fastdom
 		setInnerHTML: function(elm,html){
 			elm.innerHTML = html
 		},
-		//override if customized style setting is required
+		//override if customized style setting is required - ie fastdom
 		setElementStyle: function(elm,key,value){
 			elm.style[key] = value;
 		},
